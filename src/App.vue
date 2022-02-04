@@ -24,70 +24,94 @@ import TaskList from "./components/TaskList.vue";
 import AddTask from "./components/AddTask.vue";
 
 export default {
+  // Component Name
   name: "App",
+  // Register Component
   components: {
     Header,
     TaskList,
     AddTask,
   },
+  // Register Emit
   emits: ["add-task"],
+  // State
   data() {
     return {
       tasks: [],
       showAddTask: false,
     };
   },
+  // Component Methods
   methods: {
     toggleAddTask() {
       this.showAddTask = !this.showAddTask;
     },
-    addTask(task) {
-      this.tasks = [...this.tasks, task];
+
+    async addTask(task) {
+      const response = await fetch("http://localhost:5000/tasks", {
+        method: "POST",
+        headers: {
+          "Content-type": "application/json",
+        },
+        body: JSON.stringify(task),
+      });
+
+      const data = await response.json();
+
+      this.tasks = [...this.tasks, data];
     },
-    deleteTask(id) {
+
+    async deleteTask(id) {
       if (confirm("Are you sure?")) {
-        this.tasks = this.tasks.filter((task) => task.id !== id);
+        const response = await fetch(`http://localhost:5000/tasks/${id}`, {
+          method: "DELETE",
+        });
+
+        response.status === 200
+          ? (this.tasks = this.tasks.filter((task) => task.id !== id))
+          : alert("Error encountered when deleting task.");
       }
     },
-    toggleReminder(id) {
+
+    async toggleReminder(id) {
+      const taskToToggle = await this.fetchTask(id);
+
+      const updateTask = { ...taskToToggle, reminder: !taskToToggle.reminder };
+
+      const response = await fetch(`http://localhost:5000/tasks/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-type": "application/json",
+        },
+        body: JSON.stringify(updateTask),
+      });
+
+      const data = await response.json();
+
       this.tasks = this.tasks.map((task) =>
-        task.id === id ? { ...task, reminder: !task.reminder } : task
+        task.id === id ? { ...task, reminder: data.reminder } : task
       );
     },
+
+    async fetchTasks() {
+      const response = await fetch("http://localhost:5000/tasks");
+
+      const data = await response.json();
+
+      return data;
+    },
+
+    async fetchTask(id) {
+      const response = await fetch(`http://localhost:5000/tasks/${id}`);
+
+      const data = await response.json();
+
+      return data;
+    },
   },
-  created() {
-    this.tasks = [
-      {
-        id: 1,
-        title: "Appointment to dentist",
-        date: "March 1st 2022",
-        reminder: true,
-      },
-      {
-        id: 2,
-        title: "PTA school meeting",
-        date: "May 3rd 2022",
-        reminder: true,
-      },
-      {
-        id: 3,
-        title: "Car monthly inspection",
-        date: "April 15th 2022",
-        reminder: true,
-      },
-      {
-        id: 4,
-        title: "Create new application",
-        date: "March 15th 1st 2022",
-        reminder: false,
-      },
-      {
-        id: 5,
-        title: "Follow up check-up",
-        date: "June 1st 1st 2022",
-        reminder: false,
-      },
-    ];
+  // Life Cycle methods
+  async created() {
+    this.tasks = await this.fetchTasks();
   },
 };
 </script>
@@ -116,14 +140,10 @@ h1 {
 }
 
 #app {
-  border: 2px solid rgb(162, 162, 162);
   border-radius: 5px;
   padding: 1rem;
-}
-
-.container {
   margin: 0 auto;
-  width: 80%;
+  width: 50%;
 }
 
 .btn {
